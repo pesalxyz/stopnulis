@@ -1,0 +1,11 @@
+.env
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+data/*.db*
+outputs/*
+!outputs/.gitkeep
+assets/papers/custom/*
+!assets/papers/custom/.gitkeep
