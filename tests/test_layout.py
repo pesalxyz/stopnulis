@@ -23,3 +23,30 @@ def test_page_breaking() -> None:
     assert len(pages) == 3
     assert [len(page) for page in pages] == [2, 2, 1]
 
+
+def test_explicit_blank_lines_consume_writable_slots() -> None:
+    cfg = LayoutConfig(margin_left=10, margin_right=10, margin_top=10, margin_bottom=10,
+                       line_spacing=20, paragraph_spacing=0)
+    pages = paginate_text("Judul\n\nIsi", 300, 200, cfg, measure)
+    assert [line.text for line in pages[0]] == ["Judul", "", "Isi"]
+
+
+def test_leading_and_repeated_spaces_are_preserved() -> None:
+    cfg = LayoutConfig(margin_left=10, margin_right=10, margin_top=10, margin_bottom=10,
+                       line_spacing=20, paragraph_spacing=0)
+    pages = paginate_text("    1. github   vscode", 500, 200, cfg, measure)
+    assert pages[0][0].text == "    1. github   vscode"
+
+
+def test_crlf_is_normalized_without_losing_hard_lines() -> None:
+    cfg = LayoutConfig(margin_left=10, margin_right=10, margin_top=10, margin_bottom=10,
+                       line_spacing=20, paragraph_spacing=0)
+    pages = paginate_text("satu\r\n\r\ndua", 300, 200, cfg, measure)
+    assert [line.text for line in pages[0]] == ["satu", "", "dua"]
+
+
+def test_tabs_use_stable_four_space_stops() -> None:
+    cfg = LayoutConfig(margin_left=10, margin_right=10, margin_top=10, margin_bottom=10,
+                       line_spacing=20, paragraph_spacing=0)
+    pages = paginate_text("\titem", 300, 200, cfg, measure)
+    assert pages[0][0].text == "    item"

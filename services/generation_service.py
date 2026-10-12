@@ -29,8 +29,10 @@ class GenerationService:
         self.max_text_length = max_text_length
 
     def render(self, text: str, preferences: UserPreferences, seed: int | None = None, preview_only: bool = False, variation_level: float | None = None, text_only: bool = False) -> RenderResult:
-        text = text.strip()
-        if not text:
+        # Keep the raw Telegram payload: indentation, repeated spaces,
+        # explicit newlines, and trailing line breaks are meaningful layout
+        # input. Reject only an actually empty/whitespace-only document.
+        if not text or not text.strip():
             raise ValueError("Teks tidak boleh kosong.")
         if len(text) > self.max_text_length:
             raise ValueError(f"Teks terlalu panjang. Maksimal {self.max_text_length:,} karakter.")

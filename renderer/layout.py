@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Callable
 
 
+TAB_SIZE = 4
+
+
 @dataclass(frozen=True, slots=True)
 class LayoutConfig:
     margin_left: int = 250
@@ -72,6 +75,64 @@ def wrap_paragraph(paragraph: str, max_width: float, measure: Callable[[str], fl
     return lines or [""]
 
 
+def _wrap_hard_line(line: str, max_width: float, measure: Callable[[str], float]) -> list[str]:
+    """Soft-wrap one user-supplied line without normalising its whitespace.
+
+    Newlines are handled by the caller, so this function never joins hard
+    lines.  Spaces are kept in the returned chunks (including indentation and
+    repeated spaces); a whitespace-only line remains one empty writable slot.
+    """
+    if line == "" or not line.strip():
+        return [line]
+    chunks: list[str] = []
+    remaining = line
+    while remaining:
+        if measure(remaining) <= max_width:
+            chunks.append(remaining)
+            break
+        # Find the last whitespace boundary that still leaves content on the
+        # next line. Keep the boundary whitespace in the current chunk so no
+        # source spaces disappear from the internal representation.
+        # Consume whitespace and words as segments. This keeps repeated spaces
+        # intact while avoiding an O(n²) character-by-character scan for long
+        # Telegram messages.
+        segments: list[str] = []
+        start = 0
+        mode = remaining[0].isspace()
+        for index, char in enumerate(remaining[1:], 1):
+            if char.isspace() != mode:
+                segments.append(remaining[start:index])
+                start, mode = index, char.isspace()
+        segments.append(remaining[start:])
+        current = ""
+        consumed = 0
+        for seg_index, segment in enumerate(segments):
+            candidate = current + segment
+            if not current and measure(segment) > max_width:
+                low, high = 1, len(segment)
+                while low < high:
+                    middle = (low + high + 1) // 2
+                    if measure(segment[:middle]) <= max_width:
+                        low = middle
+                    else:
+                        high = middle - 1
+                cut = max(1, low)
+                chunks.append(segment[:cut])
+                remaining = segment[cut:] + "".join(segments[seg_index + 1:])
+                break
+            if not current or measure(candidate) <= max_width:
+                current = candidate
+                consumed += len(segment)
+                continue
+            chunks.append(current)
+            remaining = remaining[consumed:]
+            break
+        else:
+            chunks.append(current)
+            break
+    return chunks or [""]
+
+
 def paginate_text(
     text: str,
     page_width: int,
@@ -117,47 +178,16 @@ def paginate_text(
         y = line_y + config.line_spacing
         page_line_index += 1
 
-    paragraphs = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    for index, paragraph in enumerate(paragraphs):
-        # Physical ruled templates have no spare baseline for an empty
-        # paragraph separator. Keep paragraph breaks semantic without
-        # consuming one of the photographed rows.
-        if paragraph == "" and config.baseline_positions is not None:
-            continue
-        if paragraph == "":
-            emit("")
-        else:
-            current = ""
-            for word in paragraph.split():
-                candidate = f"{current} {word}".strip()
-                if current and measure(candidate) > line_width(page_line_index):
-                    emit(current)
-                    current = ""
-                    candidate = word
-                # Split only genuinely over-wide words; normal words remain
-                # intact and are tested against the actual current line width.
-                while measure(candidate) > line_width(page_line_index):
-                    chunk = ""
-                    for char in candidate:
-                        trial = chunk + char
-                        if chunk and measure(trial) > line_width(page_line_index):
-                            break
-                        chunk = trial
-                    if not chunk:
-                        chunk = candidate[:1]
-                    emit(chunk)
-                    candidate = candidate[len(chunk):]
-                    if not candidate:
-                        break
-                if candidate:
-                    current = candidate
-            if current:
-                emit(current)
-        if index < len(paragraphs) - 1 and paragraph:
-            # Stable content-based imperfection avoids geometrically identical paragraph gaps.
-            gap_jitter = 0
-            if config.paragraph_spacing:
-                signature = sum((position + 1) * ord(char) for position, char in enumerate(paragraph[:80]))
-                gap_jitter = (signature + index * 17) % 13 - 6
-            y += config.paragraph_spacing + gap_jitter
+    # Normalise only the newline encoding. Every resulting list item is a
+    # hard line supplied by the user; empty and whitespace-only lines consume
+    # a writable slot instead of being filtered or converted to paragraph gap.
+    hard_lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    for hard_line in hard_lines:
+        # Tabs are horizontal whitespace, not glyphs. Expand them at a stable
+        # four-column tab stop so indentation remains deterministic across
+        # handwriting styles and page sizes.
+        hard_line = hard_line.expandtabs(TAB_SIZE)
+        wrapped = _wrap_hard_line(hard_line, line_width(page_line_index), measure)
+        for line_text in wrapped:
+            emit(line_text)
     return pages

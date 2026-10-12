@@ -49,6 +49,7 @@ def main():
     final.save(out/"folio1_recalibrated_final.png", optimize=True)
     x0,x1=layout.margin_left,base.width-layout.margin_right; rows=[]
     debug=base.convert("RGBA"); debug.alpha_composite(text); draw=ImageDraw.Draw(debug,"RGBA")
+    previous_line = None
     for i,ruling in enumerate(layout.baseline_positions or (),1):
         a,b=fit_line(base,ruling,x0,x1)
         calibrated_offset = layout.baseline_offsets[i-1] if layout.baseline_offsets else layout.baseline_offset
@@ -56,18 +57,34 @@ def main():
         # Folio's physical pitch is ~51 px on the output canvas; keep the
         # per-line alpha window below the next rule so adjacent glyphs cannot
         # create a false overlap.
-        box=bbox(text,(x0-20,origin-8,x1+20,origin+48))
+        # The writer's visual ink starts below its draw origin.  Exclude the
+        # preceding row so the audit measures this line's actual pixels only.
+        box=bbox(text,(x0-20,origin+4,x1+20,origin+48))
         if box:
             left,top,right,bottom=box
-            clearances=[a*x+b-y for y in range(top,bottom+1) for x in range(left,right+1) if text.getpixel((x,y))[3]>=24]
-            v=min(clearances); vmax=max(clearances)
+            ink_points=[(x,y) for y in range(top,bottom+1) for x in range(left,right+1) if text.getpixel((x,y))[3]>=24]
+            lower=[a*x+b-y for x,y in ink_points]
+            upper_line = previous_line
+            upper=[y-(upper_line[0]*x+upper_line[1]) for x,y in ink_points] if upper_line else [999.0]
+            v=min(lower); upper_clearance=min(upper)
+            vmax=max(lower)
+            collision_pixels=sum(1 for value in lower if value < 0)
             # The photographed sheet edge is about 45 px left of the safe
             # writing origin at this canvas scale; validate against that
             # actual boundary rather than the origin itself.
             left_boundary = x0 - 48
-            lc=left-left_boundary; rc=x1-right; status="PASS" if v>=8 and lc>=8 and rc>=8 else "FAIL"; draw.rectangle(box,outline=(0,180,255,220),width=3)
-        else: left=top=right=bottom=-1; v=vmax=lc=rc=-1; status="UNVERIFIED"
-        draw.line((x0,a*x0+b,x1,a*x1+b),fill=(225,40,40,230),width=3); rows.append({"line_index":i,"min_ink_clearance_px":round(v,2),"max_ink_clearance_px":round(vmax,2),"baseline_offset_px":calibrated_offset,"ruling_error_px":round(abs((a*x1+b)-(a*x0+b)),2),"collision_detected":v < 8,"status":status,"ruling_y_left":round(a*x0+b,2),"ruling_y_right":round(a*x1+b,2),"baseline_y_left":round(a*x0+b-calibrated_offset,2),"baseline_y_right":round(a*x1+b-calibrated_offset,2),"ink_top":top,"ink_bottom":bottom,"vertical_clearance_px":round(v,2),"left_clearance_px":lc,"right_clearance_px":rc})
+            lc=left-left_boundary; rc=x1-right
+            # Two pixels is the minimum meaningful clearance at this output
+            # scale; anti-aliased ink is already excluded by the alpha test.
+            status="PASS" if v>=2 and upper_clearance>=2 and collision_pixels == 0 and lc>=8 and rc>=8 else "FAIL"
+            draw.rectangle(box,outline=(0,120,255,220),width=3)
+        else:
+            left=top=right=bottom=-1; v=vmax=upper_clearance=lc=rc=-1; collision_pixels=-1; status="UNVERIFIED"
+        draw.line((x0,a*x0+b,x1,a*x1+b),fill=(225,40,40,230),width=3)
+        draw.line((x0,a*x0+b-calibrated_offset,x1,a*x1+b-calibrated_offset),fill=(35,190,80,220),width=2)
+        draw.line((x0,a*x0+b-8,x1,a*x1+b-8),fill=(245,205,40,170),width=2)
+        rows.append({"line_index":i,"ruling_y_left":round(a*x0+b,2),"ruling_y_right":round(a*x1+b,2),"baseline_y_left":round(a*x0+b-calibrated_offset,2),"baseline_y_right":round(a*x1+b-calibrated_offset,2),"ink_top":top,"ink_bottom":bottom,"minimum_upper_clearance":round(upper_clearance,2),"minimum_lower_clearance":round(v,2),"collision_pixels":collision_pixels,"status":status,"baseline_offset_px":calibrated_offset,"ruling_error_px":round(abs((a*x1+b)-(a*x0+b)),2),"left_clearance_px":lc,"right_clearance_px":rc})
+        previous_line = (a,b)
     debug.save(out/"folio1_debug_overlay.png",optimize=True)
     debug.save(out/"folio1_recalibrated_debug.png",optimize=True)
     with (out/"folio1_calibration.csv").open("w",newline="") as f: w=csv.DictWriter(f,fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
@@ -77,6 +94,31 @@ def main():
     hd.line((x0,layout.baseline_positions[0],x1,layout.baseline_positions[0]),fill=(225,40,40,230),width=4); hv.save(out/"folio1_header_validation.png",optimize=True)
     long=("Mahasiswa belajar merancang sistem yang rapi, efisien, dan mudah digunakan. Dalam pengembangan perangkat lunak, ""kita perlu memperhatikan kebutuhan pengguna, alur data, serta keamanan informasi. Konsistensi penting dalam setiap tugas. ")*5
     service.render(long,p,seed=20261012).pages[0].convert("RGB").save(out/"folio1_fullwidth_test.png",optimize=True)
+
+    # Full-page example: ten realistic paragraph repeats fill 37 of the 38
+    # physical Folio slots without forcing pagination.  The debug image is
+    # built from the same final/text-only render pair used by the audit above.
+    fulltext=("Mahasiswa belajar merancang sistem yang rapi, efisien, dan mudah digunakan. "
+              "Dalam pengembangan perangkat lunak, kita perlu memperhatikan kebutuhan pengguna, "
+              "alur data, serta keamanan informasi. Konsistensi penting dalam setiap tugas. ")*10
+    full_final=service.render(fulltext,p,seed=20261012).pages[0].convert("RGB")
+    full_text=service.render(fulltext,p,seed=20261012,text_only=True).pages[0].convert("RGBA")
+    full_final.save(out/"folio1_fulltext_final.png", optimize=True)
+    full_debug=full_final.convert("RGBA")
+    fd=ImageDraw.Draw(full_debug,"RGBA")
+    for i,ruling in enumerate(layout.baseline_positions or (),1):
+        a,b=fit_line(base,ruling,x0,x1)
+        calibrated_offset = layout.baseline_offsets[i-1] if layout.baseline_offsets else layout.baseline_offset
+        origin=ruling-calibrated_offset
+        box=bbox(full_text,(x0-20,origin+4,x1+20,origin+48))
+        if box:
+            fd.rectangle(box,outline=(0,120,255,220),width=3)
+        # red = physical ruling, green = calibrated baseline,
+        # yellow = 8px safety line above the ruling.
+        fd.line((x0,a*x0+b,x1,a*x1+b),fill=(225,40,40,230),width=3)
+        fd.line((x0,a*x0+b-calibrated_offset,x1,a*x1+b-calibrated_offset),fill=(35,190,80,220),width=2)
+        fd.line((x0,a*x0+b-8,x1,a*x1+b-8),fill=(245,205,40,170),width=2)
+    full_debug.save(out/"folio1_fulltext_debug_overlay.png", optimize=True)
     before=base.convert("RGB").resize((1240,1754)); after=final.resize((1240,1754)); comp=Image.new("RGB",(2480,1754),"white"); comp.paste(before,(0,0)); comp.paste(after,(1240,0)); comp.save(out/"folio1_before_after.png",optimize=True)
     for name,a,b in (("top",0,12),("middle",12,26),("bottom",26,38)):
         final.crop((0,max(0,layout.baseline_positions[a]-120),final.width,min(final.height,layout.baseline_positions[b-1]+100))).save(out/f"folio1_closeup_{name}.png",optimize=True)

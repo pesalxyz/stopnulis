@@ -191,10 +191,13 @@ def _load_menu_template(template: BookTemplate, menu_dir: Path) -> tuple[Image.I
                     # Per-line Folio calibration in output pixels.  The
                     # photographed sheet bows slightly, so a single offset
                     # produces a 2--25 px clearance drift.
-                    (57, 58, 60, 60, 61, 62, 63, 64, 64, 64,
-                     66, 66, 67, 67, 68, 68, 68, 69, 69, 70,
-                     70, 70, 70, 70, 70, 69, 69, 68, 66, 65,
-                     63, 62, 59, 58, 55, 53, 51, 48)
+                    # Per-line clearance calibration from final composited
+                    # glyph pixels. Corrections vary with the photographed
+                    # ruling drift; there is no global Y shift.
+                    (60, 58, 53, 54, 54, 56, 56, 58, 58, 58,
+                     59, 59, 61, 61, 62, 62, 62, 63, 63, 64,
+                     64, 65, 64, 64, 64, 63, 63, 62, 61, 60,
+                     58, 56, 53, 53, 50, 48, 47, 49)
                     if template.filename == "kertas_folio_1.png" else None
                 )
             ),
@@ -213,14 +216,18 @@ def _load_menu_template(template: BookTemplate, menu_dir: Path) -> tuple[Image.I
                      -0.00579, -0.00563, -0.00563, -0.00615, -0.00588,
                      -0.00651, -0.00507, -0.00535, -0.00475, -0.00392)
                     if template.filename == "buku_tulis_6.jpg" else (
-                        (-0.00483, -0.00375, -0.00314, -0.00148, -0.00020,
-                         0.00027, 0.00247, 0.00049, 0.00204, 0.00257,
-                         0.00310, 0.00488, 0.00244, 0.00364, 0.00259,
-                         0.00076, 0.00196, 0.00190, 0.00208, 0.00359,
-                         0.00151, 0.00513, 0.00249, 0.00218, 0.00516,
-                         0.00233, 0.00268, 0.00332, 0.00102, 0.00147,
-                         -0.00069, -0.00454, -0.00639, -0.00790, -0.01103,
-                         -0.01172, -0.00997, -0.00745)
+                        # Folio rulings fall across the page because of the
+                        # photographed perspective. Keep each glyph baseline
+                        # in that same local ruling coordinate space; leaving
+                        # these at zero made horizontal text cross the rule.
+                        (-0.00795, -0.00782, -0.00783, -0.00753, -0.00784,
+                         -0.00804, -0.00815, -0.00798, -0.00859, -0.00853,
+                         -0.00785, -0.00790, -0.00699, -0.00724, -0.00645,
+                         -0.00688, -0.00729, -0.00669, -0.00668, -0.00588,
+                         -0.00562, -0.00497, -0.00527, -0.00548, -0.00574,
+                         -0.00669, -0.00635, -0.00915, -0.01155, -0.01147,
+                         -0.01181, -0.01215, -0.01206, -0.01225, -0.01227,
+                         -0.01165, -0.01165, -0.01173)
                         if template.filename == "kertas_folio_1.png" else None
                     )
                 )
