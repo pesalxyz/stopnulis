@@ -54,7 +54,9 @@ _SOURCE_GEOMETRY: dict[str, tuple[int, int, int, tuple[int, ...] | None, float]]
         (433, 472, 511, 550, 590, 628, 667, 706, 745, 784, 823,
          861, 900, 938, 978, 1012, 1051, 1090, 1128, 1166, 1205,
          1245, 1283, 1322, 1361, 1401, 1440, 1479, 1519, 1559, 1601),
-        1.0,
+        # Variant D calibration: body glyphs at 88% of the original scale.
+        # Header rendering uses a separate production-size writer.
+        0.88,
     ),
     # Buku 4 has 31 photographed writing lines. The final darker line below
     # source y=1522 is the page/bottom border and is intentionally excluded.
@@ -78,7 +80,9 @@ _SOURCE_GEOMETRY: dict[str, tuple[int, int, int, tuple[int, ...] | None, float]]
     "kertas_folio_1.png": (
         270, 1000, 123,
         tuple(range(148, 1111, 26)),
-        0.84,
+        # Variant D calibration: 88% of the original Folio body scale
+        # (0.84 * 0.88 = 0.7392). Header uses its established 0.84 scale.
+        0.7392,
     ),
     "kertas_hvs.jpg": (125, 610, 120, None, 1.0),
 }

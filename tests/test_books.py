@@ -63,3 +63,12 @@ def test_menu_templates_preserve_page_size_and_old_ids_fallback() -> None:
                 assert len(layout.baseline_positions) - layout.baseline_start_index == 27
     fallback, _ = load_paper("lined", ROOT / "assets" / "papers", MENU_DIR)
     assert fallback.size == PAGE_SIZE
+
+
+def test_book3_body_scale_is_variant_d_only() -> None:
+    _, book3 = load_paper("book_buku_tulis_3", ROOT / "assets" / "papers", MENU_DIR)
+    _, book1 = load_paper("book_buku_tulis_1", ROOT / "assets" / "papers", MENU_DIR)
+    _, folio1 = load_paper("book_kertas_folio_1", ROOT / "assets" / "papers", MENU_DIR)
+    assert book3.handwriting_scale == 0.88
+    assert folio1.handwriting_scale == 0.7392
+    assert book1.handwriting_scale == 1.0

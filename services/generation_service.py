@@ -59,6 +59,29 @@ class GenerationService:
         else:
             variation = Variation(**{key: value for key, value in style.items() if key not in {"label", "engine"}})
             writer = HandwritingRenderer(font_path, round(54 * layout.handwriting_scale * layout.body_scale_adjust), color, variation, seed)
+        # Buku 3's selected Variant D scale applies only to body text. Keep
+        # its identity header at the established production size by using a
+        # separate active-style writer for the header pass.
+        header_writer = writer
+        if preferences.book_style in {"book_buku_tulis_3", "book_kertas_folio_1"} and style.get("engine") == "multi_glyph":
+            # Body scales are experimental/production values, but identity
+            # headers retain their established production size.
+            header_scale = {
+                # Book 3 headers were historically rendered at the original
+                # 54px size, while Folio headers used its 0.84 body scale.
+                "book_buku_tulis_3": layout.handwriting_scale / 0.88,
+                "book_kertas_folio_1": 0.84,
+            }[preferences.book_style]
+            header_writer = MultiGlyphHandwritingRenderer(
+                self.assets_dir / "handwriting" / style.get("asset_style", style_id),
+                round(54 * header_scale * layout.body_scale_adjust),
+                color,
+                (seed or 0) + 991,
+                float(style.get("variation_level", 0.10)),
+                float(style.get("slant_factor", 1.0)),
+                float(style.get("rotation_jitter", 0.14)),
+                float(style.get("advance_factor", 1.0)),
+            )
         positioned_pages = paginate_text(text, base.width, base.height, layout, writer.measure)
         if len(positioned_pages) > self.MAX_PAGES:
             raise ValueError(
@@ -79,7 +102,7 @@ class GenerationService:
             # header still uses the same active writer/style, but cannot alter
             # glyph variants or spacing in the production body.
             if not text_only and page_index == 0:
-                add_header(page, preferences, date_text, font_path, layout, writer)
+                add_header(page, preferences, date_text, font_path, layout, header_writer)
             pages.append(page)
         debug_stats = writer.debug_stats() if hasattr(writer, "debug_stats") else None
         return RenderResult(pages, hashlib.sha256(text.encode("utf-8")).hexdigest(), debug_stats)

@@ -40,12 +40,13 @@ INK_COLORS: dict[str, tuple[int, int, int]] = {
 }
 
 HANDWRITING_STYLES = {
-    "natural_student_01": {"label": "Natural Student", "engine": "multi_glyph"},
-    "natural_student_neat_01": {"label": "Natural Student Neat", "engine": "multi_glyph", "asset_style": "natural_student_01"},
-    # Locked production profile: neat_90 geometry with only local glyph polish.
-    "natural_student_neat_90": {"label": "Natural Student", "engine": "multi_glyph", "asset_style": "natural_student_01", "variation_level": 0.10},
+    "natural_student_01": {
+        "label": "Agak Berantakan",
+        "engine": "multi_glyph",
+        "asset_style": "natural_student_01",
+    },
     "natural_student_upright_01": {
-        "label": "Natural Student Upright",
+        "label": "Rapih",
         "engine": "multi_glyph",
         "asset_style": "natural_student_upright_01",
         "variation_level": 0.10,
@@ -53,9 +54,4 @@ HANDWRITING_STYLES = {
         "rotation_jitter": 0.05,
         "advance_factor": 1.0,
     },
-    "neat": {"label": "Rapi", "rotation": 0.8, "x_jitter": 0.5, "y_jitter": 0.8, "scale": 0.025},
-    "semi_neat": {"label": "Semi Rapi", "rotation": 1.3, "x_jitter": 1.0, "y_jitter": 1.5, "scale": 0.035},
-    "student": {"label": "Mahasiswa", "rotation": 1.8, "x_jitter": 1.4, "y_jitter": 2.2, "scale": 0.045},
-    "slanted": {"label": "Miring", "rotation": 1.2, "x_jitter": 0.9, "y_jitter": 1.4, "scale": 0.03, "slant": 0.18},
-    "messy": {"label": "Agak Berantakan", "rotation": 2.0, "x_jitter": 2.0, "y_jitter": 3.0, "scale": 0.055},
 }
