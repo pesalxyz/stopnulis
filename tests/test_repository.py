@@ -16,3 +16,14 @@ async def test_user_preferences_roundtrip(tmp_path) -> None:
     assert updated.show_identity is True
     reset = await repo.reset(123)
     assert reset.ink_color == "blue"
+
+
+@pytest.mark.asyncio
+async def test_dynamic_identity_roundtrip(tmp_path) -> None:
+    database = Database(tmp_path / "dynamic.db")
+    await database.initialize()
+    repo = UserRepository(database)
+    identity = [{"label": "Nama", "value": "Faisal"}, {"label": "Wali Kelas", "value": "Bu Rini"}]
+    import json
+    updated = await repo.update(456, identity_json=json.dumps(identity), show_identity=True)
+    assert updated.identity == identity

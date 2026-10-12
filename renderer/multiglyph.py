@@ -89,7 +89,11 @@ class MultiGlyphHandwritingRenderer:
                 width += self._average_advance(char)
                 width += PAIR_ADJUSTMENTS.get(previous + char, 0.0) * self.scale
             previous = char
-        return width * 1.018
+        # Advances already include the asset's real glyph metrics, pair
+        # adjustments, and scaled word spacing.  A large blanket allowance
+        # caused premature wraps; retain only a small rasterisation safety
+        # margin for rotation/anti-aliasing at the right edge.
+        return width * 1.006
 
     def baseline_series(self, length: int) -> list[float]:
         """Smooth correlated drift; exposed for deterministic behavioral tests."""

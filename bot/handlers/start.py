@@ -41,7 +41,10 @@ async def reset(message: Message, state: FSMContext, repo: UserRepository) -> No
 @router.callback_query(F.data == "menu:settings")
 async def settings_summary(callback: CallbackQuery, repo: UserRepository) -> None:
     pref = await repo.get_or_create(callback.from_user.id)
-    identity = pref.name if pref.show_identity and pref.name else "disembunyikan"
+    if pref.show_identity and (pref.identity or pref.name):
+        identity = ", ".join(f"{item['label']}: {item['value']}" for item in (pref.identity or [])[:3]) or (pref.name or "tersedia")
+    else:
+        identity = "disembunyikan"
     date = pref.custom_date if pref.date_mode == "custom" else ("hari ini" if pref.show_date else "disembunyikan")
     await callback.message.answer(
         "Pengaturan saat ini:\n"
@@ -50,4 +53,3 @@ async def settings_summary(callback: CallbackQuery, repo: UserRepository) -> Non
         reply_markup=main_menu(),
     )
     await callback.answer()
-

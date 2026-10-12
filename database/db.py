@@ -43,6 +43,12 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(self.path) as db:
             await db.executescript(SCHEMA)
+            # Non-destructive migration for installations created before
+            # dynamic identities were introduced.
+            async with db.execute("PRAGMA table_info(user_preferences)") as cur:
+                columns = {row[1] for row in await cur.fetchall()}
+            if "identity_json" not in columns:
+                await db.execute("ALTER TABLE user_preferences ADD COLUMN identity_json TEXT")
             await db.commit()
 
     def connect(self) -> aiosqlite.Connection:

@@ -43,8 +43,10 @@ class HandwritingRenderer:
         self._font_cache: dict[int, ImageFont.FreeTypeFont] = {font_size: self.font}
 
     def measure(self, text: str) -> float:
-        # Small allowance prevents jittered glyphs from crossing the right margin.
-        return self.font.getlength(text) * 1.04
+        # The renderer advances using the same font metrics.  Keep a small
+        # allowance for per-glyph jitter instead of the old 4% conservative
+        # padding, which caused avoidable line breaks.
+        return self.font.getlength(text) * 1.012
 
     def render_line(self, image: Image.Image, text: str, x: int, y: int, optimized: bool = False, baseline_slope: float = 0.0) -> None:
         if not text:

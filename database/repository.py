@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime
+import json
 
 from database.db import Database
 from database.models import GenerationHistory, UserPreferences
@@ -10,6 +11,7 @@ from database.models import GenerationHistory, UserPreferences
 PREF_FIELDS = (
     "book_style", "handwriting_style", "ink_color", "show_identity", "name", "npm",
     "class_name", "attendance_number", "show_date", "date_mode", "custom_date",
+    "identity_json",
 )
 
 
@@ -29,6 +31,11 @@ class UserRepository:
                 row = await cur.fetchone()
         assert row is not None
         values = dict(row)
+        raw_identity = values.pop("identity_json", None)
+        try:
+            values["identity"] = json.loads(raw_identity) if raw_identity else None
+        except (TypeError, json.JSONDecodeError):
+            values["identity"] = None
         values["show_identity"] = bool(values["show_identity"])
         values["show_date"] = bool(values["show_date"])
         for key in ("created_at", "updated_at"):
@@ -65,4 +72,3 @@ class UserRepository:
                 (history.telegram_user_id, history.text_hash, history.page_count, history.output_type),
             )
             await db.commit()
-

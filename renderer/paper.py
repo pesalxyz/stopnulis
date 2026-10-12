@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 from database.models import UserPreferences
 from renderer.handwriting import load_font
 from renderer.layout import LayoutConfig
+from services.user_service import identity_for_preferences
 from config.books import BookTemplate, book_registry, default_book_id
 
 
@@ -321,12 +322,17 @@ def add_header(
             legacy_book4 = False
         fields = []
         if preferences.show_identity:
-            fields = [
-                (f"Nama: {preferences.name or ''}", left, 0, 0),
-                (f"NPM: {preferences.npm or ''}", mid, 0, 1),
-                (f"Kelas: {preferences.class_name or ''}", left, 1, 2),
-                (f"Absen: {preferences.attendance_number or ''}", mid, 1, 3),
-            ]
+            items = identity_for_preferences(
+                preferences.identity, preferences.name, preferences.npm,
+                preferences.class_name, preferences.attendance_number,
+            )
+            for index, item in enumerate(items):
+                # Two-column row-major layout.  Book 4 has two measured
+                # physical header rows; extra fields continue in the second
+                # row rather than disturbing its calibrated body grid.
+                row = min(index // 2, 1) if layout.baseline_start_index == 4 else index // 2
+                x = left if index % 2 == 0 else mid
+                fields.append((f"{item['label']}: {item['value']}", x, row, index))
         for text, x, row, field_index in fields:
             if ruling and not legacy_book4:
                 top_y = ruling(row, x)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 
 @dataclass(slots=True)
@@ -15,6 +16,7 @@ class UserPreferences:
     npm: str | None = None
     class_name: str | None = None
     attendance_number: str | None = None
+    identity: list[dict[str, str]] | None = None
     show_date: bool = True
     date_mode: str = "today"
     custom_date: str | None = None

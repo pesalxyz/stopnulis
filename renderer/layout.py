@@ -8,6 +8,7 @@ from typing import Callable
 class LayoutConfig:
     margin_left: int = 250
     margin_left_positions: tuple[int, ...] | None = None
+    margin_right_positions: tuple[int, ...] | None = None
     margin_right: int = 180
     margin_top: int = 500
     margin_bottom: int = 220
@@ -78,12 +79,43 @@ def paginate_text(
     config: LayoutConfig,
     measure: Callable[[str], float],
 ) -> list[list[PositionedLine]]:
-    effective_left = max((config.margin_left_positions or (config.margin_left,)))
-    max_width = page_width - effective_left - config.margin_right
     bottom = page_height - config.margin_bottom
     pages: list[list[PositionedLine]] = [[]]
     y = config.margin_top
     page_line_index = 0
+
+    def line_width(index: int) -> float:
+        physical = config.baseline_start_index + index
+        left = config.margin_left_positions[physical] if config.margin_left_positions and physical < len(config.margin_left_positions) else config.margin_left
+        right = config.margin_right_positions[physical] if config.margin_right_positions and physical < len(config.margin_right_positions) else config.margin_right
+        return max(1.0, page_width - left - right)
+
+    def emit(line_text: str) -> None:
+        nonlocal y, page_line_index
+        physical_index = config.baseline_start_index + page_line_index
+        if config.baseline_positions is not None and physical_index >= len(config.baseline_positions):
+            pages.append([])
+            y = config.margin_top
+            page_line_index = 0
+            physical_index = config.baseline_start_index
+        if config.baseline_positions is not None and physical_index < len(config.baseline_positions):
+            line_y = config.baseline_positions[physical_index] - config.baseline_offset
+            if config.baseline_offsets is not None and physical_index < len(config.baseline_offsets):
+                line_y += config.baseline_offset - config.baseline_offsets[physical_index]
+        else:
+            if y + config.line_spacing > bottom and pages[-1]:
+                pages.append([])
+                y = config.margin_top
+                page_line_index = 0
+                physical_index = config.baseline_start_index
+            line_y = y
+        x = config.margin_left_positions[physical_index] if config.margin_left_positions and physical_index < len(config.margin_left_positions) else config.margin_left
+        slope = config.baseline_slope
+        if config.baseline_slopes is not None and physical_index < len(config.baseline_slopes):
+            slope = config.baseline_slopes[physical_index]
+        pages[-1].append(PositionedLine(line_text, x, line_y, slope))
+        y = line_y + config.line_spacing
+        page_line_index += 1
 
     paragraphs = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     for index, paragraph in enumerate(paragraphs):
@@ -92,33 +124,35 @@ def paginate_text(
         # consuming one of the photographed rows.
         if paragraph == "" and config.baseline_positions is not None:
             continue
-        wrapped = wrap_paragraph(paragraph, max_width, measure)
         if paragraph == "":
-            wrapped = [""]
-        for line in wrapped:
-            physical_index = config.baseline_start_index + page_line_index
-            if config.baseline_positions is not None and physical_index >= len(config.baseline_positions):
-                pages.append([])
-                y = config.margin_top
-                page_line_index = 0
-                physical_index = config.baseline_start_index
-            if config.baseline_positions is not None and physical_index < len(config.baseline_positions):
-                y = config.baseline_positions[physical_index] - config.baseline_offset
-                if config.baseline_offsets is not None and physical_index < len(config.baseline_offsets):
-                    y += config.baseline_offset - config.baseline_offsets[physical_index]
-            elif y + config.line_spacing > bottom:
-                pages.append([])
-                y = config.margin_top
-                page_line_index = 0
-            x = config.margin_left
-            if config.margin_left_positions is not None and physical_index < len(config.margin_left_positions):
-                x = config.margin_left_positions[physical_index]
-            slope = config.baseline_slope
-            if config.baseline_slopes is not None and physical_index < len(config.baseline_slopes):
-                slope = config.baseline_slopes[physical_index]
-            pages[-1].append(PositionedLine(line, x, y, slope))
-            y += config.line_spacing
-            page_line_index += 1
+            emit("")
+        else:
+            current = ""
+            for word in paragraph.split():
+                candidate = f"{current} {word}".strip()
+                if current and measure(candidate) > line_width(page_line_index):
+                    emit(current)
+                    current = ""
+                    candidate = word
+                # Split only genuinely over-wide words; normal words remain
+                # intact and are tested against the actual current line width.
+                while measure(candidate) > line_width(page_line_index):
+                    chunk = ""
+                    for char in candidate:
+                        trial = chunk + char
+                        if chunk and measure(trial) > line_width(page_line_index):
+                            break
+                        chunk = trial
+                    if not chunk:
+                        chunk = candidate[:1]
+                    emit(chunk)
+                    candidate = candidate[len(chunk):]
+                    if not candidate:
+                        break
+                if candidate:
+                    current = candidate
+            if current:
+                emit(current)
         if index < len(paragraphs) - 1 and paragraph:
             # Stable content-based imperfection avoids geometrically identical paragraph gaps.
             gap_jitter = 0
