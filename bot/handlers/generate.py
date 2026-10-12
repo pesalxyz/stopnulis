@@ -120,8 +120,9 @@ async def generate_final(
         total_size = sum(path.stat().st_size for path in paths)
         if total_size > settings.max_output_bytes:
             raise ValueError("Ukuran hasil terlalu besar. Kurangi panjang teks atau gunakan PDF.")
-        for path in paths:
-            await callback.message.answer_document(FSInputFile(path), caption=f"Hasil {output_type.upper()}" if len(paths) == 1 else None)
+        for index, path in enumerate(paths, 1):
+            caption = f"Hasil {output_type.upper()}" if len(paths) == 1 else f"Halaman {index}/{len(paths)}"
+            await callback.message.answer_document(FSInputFile(path), caption=caption)
         await repo.add_history(GenerationHistory(callback.from_user.id, result.text_hash, len(result.pages), output_type))
         await state.clear()
         await status.edit_text(f"Selesai — {len(result.pages)} halaman.")
@@ -143,4 +144,3 @@ async def generate_final(
                 path.unlink(missing_ok=True)
             except OSError:
                 logger.warning("Could not remove temporary output %s", path.name)
-

@@ -23,6 +23,7 @@ class RenderResult:
 
 
 class GenerationService:
+    MAX_PAGES = 4
     def __init__(self, assets_dir: Path, max_text_length: int = 15000) -> None:
         self.assets_dir = assets_dir
         self.max_text_length = max_text_length
@@ -57,10 +58,17 @@ class GenerationService:
             variation = Variation(**{key: value for key, value in style.items() if key not in {"label", "engine"}})
             writer = HandwritingRenderer(font_path, round(54 * layout.handwriting_scale * layout.body_scale_adjust), color, variation, seed)
         positioned_pages = paginate_text(text, base.width, base.height, layout, writer.measure)
+        if len(positioned_pages) > self.MAX_PAGES:
+            raise ValueError(
+                f"Teks melebihi kapasitas maksimal {self.MAX_PAGES} halaman "
+                f"(terdeteksi {len(positioned_pages)} halaman). Silakan perpendek teks "
+                "atau bagi menjadi beberapa permintaan."
+            )
         date_text = self._date_text(preferences)
         pages: list[Image.Image] = []
         optimized = len(text) > 6000
-        for lines in positioned_pages[:1] if preview_only else positioned_pages:
+        render_pages = positioned_pages[:1] if preview_only else positioned_pages
+        for page_index, lines in enumerate(render_pages):
             page = Image.new("RGBA", base.size, (0, 0, 0, 0)) if text_only else base.copy()
             for line in lines:
                 writer.render_line(page, line.text, line.x, line.y, optimized=optimized, baseline_slope=line.baseline_slope)
@@ -68,7 +76,7 @@ class GenerationService:
             # the same deterministic handwriting sequence as before. The
             # header still uses the same active writer/style, but cannot alter
             # glyph variants or spacing in the production body.
-            if not text_only:
+            if not text_only and page_index == 0:
                 add_header(page, preferences, date_text, font_path, layout, writer)
             pages.append(page)
         debug_stats = writer.debug_stats() if hasattr(writer, "debug_stats") else None
