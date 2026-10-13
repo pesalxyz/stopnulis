@@ -7,7 +7,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from bot.handlers import book, date, generate, handwriting, identity, ink, start
+from bot.handlers import admin, book, date, generate, handwriting, identity, ink, start
 from config.settings import Settings
 from database.db import Database
 from database.repository import UserRepository
@@ -29,7 +29,7 @@ async def main() -> None:
     generator = GenerationService(settings.assets_dir, settings.max_text_length)
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
-    dp.include_routers(start.router, book.router, handwriting.router, identity.router, date.router, ink.router, generate.router)
+    dp.include_routers(admin.router, start.router, book.router, handwriting.router, identity.router, date.router, ink.router, generate.router)
     dp["repo"] = repo
     dp["generator"] = generator
     dp["settings"] = settings
@@ -41,4 +41,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

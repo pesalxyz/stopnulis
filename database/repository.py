@@ -72,3 +72,30 @@ class UserRepository:
                 (history.telegram_user_id, history.text_hash, history.page_count, history.output_type),
             )
             await db.commit()
+
+    async def usage_stats(self) -> dict[str, int]:
+        """Return aggregate usage counts without exposing user identifiers."""
+        async with self.database.connect() as db:
+            async with db.execute(
+                "SELECT COUNT(*) FROM user_preferences"
+            ) as cur:
+                total_users = int((await cur.fetchone())[0])
+            async with db.execute(
+                "SELECT COUNT(DISTINCT telegram_user_id) FROM generation_history"
+            ) as cur:
+                active_users = int((await cur.fetchone())[0])
+            async with db.execute(
+                "SELECT COUNT(*) FROM generation_history"
+            ) as cur:
+                total_generations = int((await cur.fetchone())[0])
+            async with db.execute(
+                "SELECT COUNT(DISTINCT telegram_user_id) FROM generation_history "
+                "WHERE date(created_at) = date('now')"
+            ) as cur:
+                active_today = int((await cur.fetchone())[0])
+        return {
+            "total_users": total_users,
+            "active_users": active_users,
+            "active_today": active_today,
+            "total_generations": total_generations,
+        }

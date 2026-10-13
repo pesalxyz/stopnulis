@@ -16,6 +16,16 @@ def _path(name: str, default: str) -> Path:
     return value if value.is_absolute() else ROOT_DIR / value
 
 
+def _optional_int(name: str) -> int | None:
+    value = os.getenv(name, "").strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} harus berupa angka Telegram user ID.") from exc
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     bot_token: str = field(default_factory=lambda: os.getenv("BOT_TOKEN", ""))
@@ -25,6 +35,7 @@ class Settings:
     max_text_length: int = field(default_factory=lambda: int(os.getenv("MAX_TEXT_LENGTH", "15000")))
     max_output_bytes: int = field(default_factory=lambda: int(os.getenv("MAX_OUTPUT_BYTES", "50000000")))
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
+    admin_telegram_id: int | None = field(default_factory=lambda: _optional_int("ADMIN_TELEGRAM_ID"))
 
     def prepare(self) -> None:
         self.database_path.parent.mkdir(parents=True, exist_ok=True)

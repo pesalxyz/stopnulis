@@ -1,6 +1,7 @@
 import pytest
 
 from database.db import Database
+from database.models import GenerationHistory
 from database.repository import UserRepository
 
 
@@ -27,3 +28,19 @@ async def test_dynamic_identity_roundtrip(tmp_path) -> None:
     import json
     updated = await repo.update(456, identity_json=json.dumps(identity), show_identity=True)
     assert updated.identity == identity
+
+
+@pytest.mark.asyncio
+async def test_usage_stats_aggregate_accounts_and_generations(tmp_path) -> None:
+    database = Database(tmp_path / "stats.db")
+    await database.initialize()
+    repo = UserRepository(database)
+    await repo.get_or_create(123)
+    await repo.get_or_create(456)
+    await repo.add_history(GenerationHistory(123, "hash-a", 1, "png"))
+    await repo.add_history(GenerationHistory(123, "hash-b", 2, "pdf"))
+    stats = await repo.usage_stats()
+    assert stats["total_users"] == 2
+    assert stats["active_users"] == 1
+    assert stats["total_generations"] == 2
+    assert stats["active_today"] == 1
