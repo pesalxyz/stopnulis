@@ -28,12 +28,21 @@ def test_book_registry_discovers_all_supported_templates() -> None:
     assert len(book4.source_baselines) == 31
 
 
-def test_menu_contains_new_templates_and_custom_action() -> None:
+def test_menu_labels_use_user_facing_book_sequence() -> None:
+    labels = {item.template_id: item.label for item in discover_book_templates(MENU_DIR)}
+    assert labels["book_buku_tulis_1"] == "Buku Tulis 1"
+    assert labels["book_buku_tulis_3"] == "Buku Tulis 2"
+    assert labels["book_buku_tulis_4"] == "Buku Tulis 3"
+    assert labels["book_buku_tulis_6"] == "Buku Tulis 4"
+    assert labels["book_kertas_folio_1"] == "Kertas Folio"
+
+
+def test_menu_contains_templates_without_custom_action() -> None:
     keyboard = books_menu()
     callbacks = [button.callback_data for row in keyboard.inline_keyboard for button in row]
     assert "book:book_buku_tulis_1" in callbacks
     assert "book:book_kertas_hvs" in callbacks
-    assert "book:custom" in callbacks
+    assert "book:custom" not in callbacks
     assert "book:lined" not in callbacks
 
 

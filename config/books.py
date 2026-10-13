@@ -89,6 +89,16 @@ _SOURCE_GEOMETRY: dict[str, tuple[int, int, int, tuple[int, ...] | None, float]]
 
 
 def _display_name(path: Path) -> str:
+    # The photographed source filenames retain their historical numbering;
+    # these labels are the user-facing sequence shown in Telegram.
+    display_aliases = {
+        "buku_tulis_3.jpg": "Buku Tulis 2",
+        "buku_tulis_4.jpg": "Buku Tulis 3",
+        "buku_tulis_6.jpg": "Buku Tulis 4",
+        "kertas_folio_1.png": "Kertas Folio",
+    }
+    if path.name in display_aliases:
+        return display_aliases[path.name]
     words = path.stem.replace("_", " ").replace("-", " ").split()
     return " ".join("HVS" if word.lower() == "hvs" else word.capitalize() for word in words)
 

@@ -334,11 +334,17 @@ def add_header(
                 preferences.class_name, preferences.attendance_number,
             )
             for index, item in enumerate(items):
-                # Two-column row-major layout.  Book 4 has two measured
-                # physical header rows; extra fields continue in the second
-                # row rather than disturbing its calibrated body grid.
-                row = min(index // 2, 1) if layout.baseline_start_index == 4 else index // 2
-                x = left if index % 2 == 0 else mid
+                # Fill downward first, with at most two physical rows per
+                # column, then continue in the next column. This keeps the
+                # identity order stable for both the standard and photographed
+                # templates: field 1/2 occupy the left column, field 3/4 the
+                # middle column. Extra fields continue in later columns.
+                row = index % 2
+                column = index // 2
+                if layout.baseline_start_index == 4:
+                    row = min(row, 1)
+                column_width = max(260, round((right_edge - left) * 0.40))
+                x = left + column * column_width
                 fields.append((f"{item['label']}: {item['value']}", x, row, index))
         for text, x, row, field_index in fields:
             if ruling and not legacy_book4:
@@ -362,7 +368,9 @@ def add_header(
             elif text.split(": ", 1)[1]:
                 draw.text((x, y), text, font=small, fill=ink)
         if date_text:
-            text = f"Tanggal: {date_text}"
+            # The template already communicates that this field is the date;
+            # render only the requested date value in the header.
+            text = date_text
             if handwriting_renderer is not None:
                 date_scale = header_scale
                 if layout.header_field_scales and len(layout.header_field_scales) > 4:

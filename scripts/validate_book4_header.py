@@ -61,9 +61,9 @@ def main() -> None:
 
     fields = [
         ("Nama", left, 0, row_box(0, left - 20, mid - 10)),
-        ("NPM", mid, 0, row_box(0, mid - 20, mid + 560)),
+        ("NPM", left, 1, row_box(1, left - 20, mid - 10)),
         ("Tanggal", right - 300, 0, row_box(0, right - 360, right + 10)),
-        ("Kelas", left, 1, row_box(1, left - 20, mid - 10)),
+        ("Kelas", mid, 0, row_box(0, mid - 20, mid + 560)),
         ("Absen", mid, 1, row_box(1, mid - 20, mid + 560)),
     ]
     overlay = base.convert("RGB")

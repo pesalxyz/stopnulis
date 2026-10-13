@@ -6,7 +6,6 @@ from config.books import discover_book_templates
 def books_menu() -> InlineKeyboardMarkup:
     templates = discover_book_templates(ROOT_DIR / "menu_buku")
     rows = [[InlineKeyboardButton(text=item.label, callback_data=f"book:{item.template_id}")] for item in templates]
-    rows.append([InlineKeyboardButton(text="➕ Custom template", callback_data="book:custom")])
     rows.append([InlineKeyboardButton(text="⬅️ Menu", callback_data="menu:main")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
