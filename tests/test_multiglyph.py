@@ -81,6 +81,13 @@ def test_objective_debug_stats_are_available() -> None:
     assert stats["rotation_stddev"] > 0
 
 
+def test_word_spacing_factor_changes_spaces_only() -> None:
+    base = MultiGlyphHandwritingRenderer(STYLE, 54, (24, 58, 135), 12, word_spacing_factor=1.0)
+    wide = MultiGlyphHandwritingRenderer(STYLE, 54, (24, 58, 135), 12, word_spacing_factor=1.5)
+    assert wide.measure("ab") == base.measure("ab")
+    assert wide.measure("a b") > base.measure("a b")
+
+
 def test_natural_style_keeps_multi_page_rendering() -> None:
     service = GenerationService(STYLE.parents[1])
     text = "\n".join(f"Baris pengujian halaman nomor {index}." for index in range(80))

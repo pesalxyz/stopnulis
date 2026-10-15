@@ -4,7 +4,7 @@ MVP bot Telegram berbasis `aiogram` yang mengubah teks menjadi tulisan tangan di
 
 ## Fitur
 
-- Dua gaya tulisan berbasis 400+ raster glyph variants dan ligature bahasa Indonesia: `Agak Berantakan` dan `Rapih`. `Rapih` adalah default baru.
+- Tiga gaya tulisan berbasis raster glyph variants dan ligature bahasa Indonesia: `Agak Berantakan`, `Rapih`, dan `Tulisan Screenshot`. `Rapih` adalah default baru.
 - Template buku garis, kotak, HVS, folio, serta upload template custom.
 - Pilihan buku built-in dikelola dari folder `menu_buku/` melalui registry `config/books.py`; template custom tetap tersedia.
 - Identitas 4 baris, tanggal hari ini/custom/disembunyikan, dan empat warna tinta.

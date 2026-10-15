@@ -24,8 +24,13 @@ async def save_style(callback: CallbackQuery, state: FSMContext, repo: UserRepos
     if style not in HANDWRITING_STYLES:
         await callback.answer("Gaya tidak dikenal.", show_alert=True)
         return
+    if not HANDWRITING_STYLES[style].get("enabled", True):
+        await callback.answer(
+            "Gaya ini belum tersedia: cakupan karakter belum lengkap.",
+            show_alert=True,
+        )
+        return
     await repo.update(callback.from_user.id, handwriting_style=style)
     await state.clear()
     await callback.message.answer("Gaya tulisan disimpan.", reply_markup=main_menu())
     await callback.answer()
-

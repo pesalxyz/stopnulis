@@ -55,7 +55,7 @@ class RenderStats:
 class MultiGlyphHandwritingRenderer:
     """Raster multi-glyph renderer tuned for natural, legible student handwriting."""
 
-    def __init__(self, style_dir: Path, font_size: int, color: tuple[int, int, int], seed: int | None = None, variation_level: float = 0.10, slant_factor: float = 1.0, rotation_jitter: float = 0.14, advance_factor: float = 1.0) -> None:
+    def __init__(self, style_dir: Path, font_size: int, color: tuple[int, int, int], seed: int | None = None, variation_level: float = 0.10, slant_factor: float = 1.0, rotation_jitter: float = 0.14, advance_factor: float = 1.0, word_spacing_factor: float = 1.0) -> None:
         self.library = GlyphAssetLibrary(style_dir)
         self.font_size = font_size
         self.color = color
@@ -65,6 +65,9 @@ class MultiGlyphHandwritingRenderer:
         self.slant_factor = max(0.0, slant_factor)
         self.rotation_jitter = max(0.0, rotation_jitter)
         self.advance_factor = max(0.80, min(1.10, advance_factor))
+        # Word spacing is independent from non-space glyph advances.  Existing
+        # styles omit this key and therefore retain the exact historical value.
+        self.word_spacing_factor = max(0.75, min(2.0, word_spacing_factor))
         self.selector = VariantSelector(self.random)
         self.scale = font_size / self.library.base_size
         self._fallback_font = load_font(None, font_size)
@@ -84,7 +87,7 @@ class MultiGlyphHandwritingRenderer:
         previous = ""
         for char in text:
             if char.isspace():
-                width += self.library.space_advance * self.scale
+                width += self.library.space_advance * self.scale * self.word_spacing_factor
             else:
                 width += self._average_advance(char)
                 width += PAIR_ADJUSTMENTS.get(previous + char, 0.0) * self.scale
@@ -250,7 +253,7 @@ class MultiGlyphHandwritingRenderer:
                 if self.random.random() < 0.06 * self.variation_factor:
                     word_spacing_factor = max(1.0 - spacing_limit, min(1.0 + spacing_limit, word_spacing_factor + self.random.choice((-0.018, 0.02)) * self.variation_factor))
                 ligature_release = 1.045 if len(previous) > 1 else 1.0
-                spacing = self.library.space_advance * self.scale * self.advance_factor * word_spacing_factor * ligature_release
+                spacing = self.library.space_advance * self.scale * self.word_spacing_factor * self.advance_factor * word_spacing_factor * ligature_release
                 cursor += spacing
                 self.stats.word_spacings.append(spacing)
                 word_scale = max(0.97, min(1.03, word_scale * 0.68 + line_scale * 0.32 + self.random.uniform(-0.009, 0.009) * self.variation_factor))

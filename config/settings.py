@@ -65,4 +65,70 @@ HANDWRITING_STYLES = {
         "rotation_jitter": 0.05,
         "advance_factor": 1.0,
     },
+    "school_notebook_01": {
+        "label": "Tulisan Screenshot",
+        "engine": "multi_glyph",
+        "asset_style": "natural_student_upright_01",
+        # Compact, thin school-notebook proportions based on the supplied
+        # reference sample; this is an approximation, not a traced font.
+        "font_scale": 0.82,
+        # Experimental reference match: subtle variation only; activation is
+        # intentionally kept out of the Telegram menu until visual approval.
+        "variation_level": 0.10,
+        "slant_factor": 0.22,
+        "rotation_jitter": 0.05,
+        "advance_factor": 0.98,
+    },
+    "school_notebook_reference_rebuild_01": {
+        "label": "Tulisan Screenshot — Reference Rebuild",
+        "engine": "multi_glyph",
+        # Rollback baseline: use the last readable atlas while the isolated
+        # eight-glyph redesign is reviewed separately.
+        "asset_style": "natural_student_upright_01",
+        "font_scale": 0.82,
+        "variation_level": 0.10,
+        "slant_factor": 0.22,
+        "rotation_jitter": 0.05,
+        "advance_factor": 0.98,
+    },
+    "authentic_student_handwriting_01": {
+        "label": "Authentic Student Handwriting",
+        "engine": "multi_glyph",
+        "asset_style": "authentic_student_handwriting_01",
+        # Phase 17.3 final spacing: books use 70%; Folio/HVS remain at 70%.
+        "phase11_baseline_font_scale": 1.50,
+        "font_scale": 1.05,
+        "approved_phase": "Phase 17.3 final (70% books / 95% characters / 150% word spacing)",
+        "font_scale_by_book": {
+            # All currently registered notebook/book templates use 70%.
+            "book_buku_tulis_1": 1.05,
+            "book_buku_tulis_3": 1.05,
+            "book_buku_tulis_4": 1.05,
+            "book_buku_tulis_6": 1.05,
+            # Folio and HVS use the approved 70% size.
+            "book_kertas_folio_1": 1.05,
+            "book_kertas_hvs": 1.05,
+        },
+        # Body-only upward corrections measured from final alpha pixels
+        # against each template's local ruling/virtual baseline. Positive
+        # values move this style's glyph ink upward; other styles are
+        # unaffected because they do not define this map.
+        "vertical_alignment_by_book": {
+            "book_buku_tulis_1": 15,
+            "book_buku_tulis_3": 0,
+            "book_buku_tulis_4": 5,
+            "book_buku_tulis_6": 18,
+            "book_kertas_folio_1": 11,
+            "book_kertas_hvs": 10,
+        },
+        "variation_level": 0.10,
+        "slant_factor": 0.35,
+        "rotation_jitter": 0.08,
+        "advance_factor": 1.0,
+        "word_spacing_factor": 1.50,
+        "enabled": True,
+        "menu_enabled": True,
+        "coverage_status": "COMPLETE",
+        "missing_characters": "",
+    },
 }

@@ -38,27 +38,45 @@ class GenerationService:
             raise ValueError(f"Teks terlalu panjang. Maksimal {self.max_text_length:,} karakter.")
         style_id = preferences.handwriting_style
         style = HANDWRITING_STYLES.get(style_id, HANDWRITING_STYLES["natural_student_upright_01"])
+        if style_id in HANDWRITING_STYLES and not style.get("enabled", True):
+            raise ValueError(
+                f"Gaya tulisan {style.get('label', style_id)} belum tersedia "
+                "karena cakupan karakter belum lengkap."
+            )
         font_path = self.assets_dir / "fonts" / f"{style_id}.ttf"
         if not font_path.exists():
             font_path = None
         color = INK_COLORS.get(preferences.ink_color, INK_COLORS["blue"])
         base, layout = load_paper(preferences.book_style, self.assets_dir / "papers", self.assets_dir.parent / "menu_buku")
+        # Experimental atlases can declare optical sizes per photographed
+        # template. This keeps a glyph atlas' native diagnostic scale from
+        # being crushed by a legacy template-wide compact scale. Existing
+        # production styles have no mapping and retain the old behaviour.
+        scale_by_book = style.get("font_scale_by_book", {})
+        style_font_scale = float(scale_by_book.get(preferences.book_style, style.get("font_scale", 1.0)))
+        vertical_alignment_by_book = style.get("vertical_alignment_by_book", {})
+        # This is deliberately a body-only style correction. Layout keeps the
+        # measured ruling coordinates and pagination unchanged; the active
+        # style's final glyph ink is placed a few pixels above each local
+        # ruling. Telegram preview/final paths both call this same service.
+        style_vertical_alignment = float(vertical_alignment_by_book.get(preferences.book_style, 0.0))
         if style.get("engine") == "multi_glyph":
             asset_style = style.get("asset_style", style_id)
             profile_level = float(style.get("variation_level", 0.10))
             writer = MultiGlyphHandwritingRenderer(
                 self.assets_dir / "handwriting" / asset_style,
-                round(54 * layout.handwriting_scale * layout.body_scale_adjust),
+                round(54 * layout.handwriting_scale * layout.body_scale_adjust * style_font_scale),
                 color,
                 seed,
                 profile_level if variation_level is None else variation_level,
                 float(style.get("slant_factor", 1.0)),
                 float(style.get("rotation_jitter", 0.14)),
                 float(style.get("advance_factor", 1.0)),
+                float(style.get("word_spacing_factor", 1.0)),
             )
         else:
             variation = Variation(**{key: value for key, value in style.items() if key not in {"label", "engine"}})
-            writer = HandwritingRenderer(font_path, round(54 * layout.handwriting_scale * layout.body_scale_adjust), color, variation, seed)
+            writer = HandwritingRenderer(font_path, round(54 * layout.handwriting_scale * layout.body_scale_adjust * style_font_scale), color, variation, seed)
         # Buku 3's selected Variant D scale applies only to body text. Keep
         # its identity header at the established production size by using a
         # separate active-style writer for the header pass.
@@ -74,13 +92,14 @@ class GenerationService:
             }[preferences.book_style]
             header_writer = MultiGlyphHandwritingRenderer(
                 self.assets_dir / "handwriting" / style.get("asset_style", style_id),
-                round(54 * header_scale * layout.body_scale_adjust),
+                round(54 * header_scale * layout.body_scale_adjust * style_font_scale),
                 color,
                 (seed or 0) + 991,
                 float(style.get("variation_level", 0.10)),
                 float(style.get("slant_factor", 1.0)),
                 float(style.get("rotation_jitter", 0.14)),
                 float(style.get("advance_factor", 1.0)),
+                float(style.get("word_spacing_factor", 1.0)),
             )
         positioned_pages = paginate_text(text, base.width, base.height, layout, writer.measure)
         if len(positioned_pages) > self.MAX_PAGES:
@@ -96,7 +115,14 @@ class GenerationService:
         for page_index, lines in enumerate(render_pages):
             page = Image.new("RGBA", base.size, (0, 0, 0, 0)) if text_only else base.copy()
             for line in lines:
-                writer.render_line(page, line.text, line.x, line.y, optimized=optimized, baseline_slope=line.baseline_slope)
+                writer.render_line(
+                    page,
+                    line.text,
+                    line.x,
+                    round(line.y - style_vertical_alignment),
+                    optimized=optimized,
+                    baseline_slope=line.baseline_slope,
+                )
             # Render the identity after the body so the body consumes exactly
             # the same deterministic handwriting sequence as before. The
             # header still uses the same active writer/style, but cannot alter
